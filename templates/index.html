@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AethelConverts — Free Media Converter</title>
+  <meta name="description" content="AethelConverts is a simple free MP4 to MP3 and MP3 to MP4 converter.">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand">
+      <div class="logo">A</div>
+      <div>
+        <div class="brand-name">AethelConverts</div>
+        <div class="owner">Owner: Sumit Bahrod</div>
+      </div>
+    </div>
+    <nav>
+      <a href="#converter">Converter</a>
+      <a href="#how">How it works</a>
+      <a href="/privacy">Privacy</a>
+      <a href="/terms">Terms</a>
+    </nav>
+  </header>
+
+  <main>
+    <section class="hero">
+      <span class="pill">FREE • SIMPLE • PRIVATE</span>
+      <h1>Convert your media.<br><span>No complicated setup.</span></h1>
+      <p>Convert MP4 to MP3 or MP3 to MP4 in a few clicks. No account and no paid plan required.</p>
+    </section>
+
+    <section id="converter" class="card">
+      <div class="mode-switch">
+        <button class="mode active" data-mode="mp3">MP4 → MP3</button>
+        <button class="mode" data-mode="mp4">MP3 → MP4</button>
+      </div>
+
+      <label class="dropzone" id="dropzone">
+        <input type="file" id="file" accept=".mp4,.mp3,.mov,.m4v,.webm,.mkv,.wav,.aac,.m4a">
+        <div class="upload-icon">↑</div>
+        <h2 id="drop-title">Drop your MP4 here</h2>
+        <p>or click to choose a file</p>
+        <small>Maximum 500 MB</small>
+      </label>
+
+      <div id="selected" class="selected hidden">
+        <span id="filename"></span>
+        <button id="clear">×</button>
+      </div>
+
+      <button id="convert" class="convert-btn" disabled>Convert to MP3</button>
+
+      <div id="progress-wrap" class="hidden">
+        <div class="progress"><div id="bar"></div></div>
+        <p id="status">Preparing conversion…</p>
+      </div>
+
+      <div id="result" class="result hidden">
+        <div>
+          <strong>Conversion complete</strong>
+          <p>Your file is ready.</p>
+        </div>
+        <a id="download" class="download" href="#">Download</a>
+      </div>
+
+      <div id="error" class="error hidden"></div>
+    </section>
+
+    <section class="ad-slot" aria-label="Advertisement">
+      <span>ADVERTISEMENT</span>
+      <div>Ad space — connect an approved ad network after launch.</div>
+    </section>
+
+    <section id="how" class="info">
+      <h2>How AethelConverts works</h2>
+      <div class="steps">
+        <div><b>01</b><h3>Choose</h3><p>Select MP4 → MP3 or MP3 → MP4.</p></div>
+        <div><b>02</b><h3>Upload</h3><p>Choose your media file. No account is required.</p></div>
+        <div><b>03</b><h3>Convert</h3><p>FFmpeg processes the file on the server.</p></div>
+        <div><b>04</b><h3>Download</h3><p>Download your converted file when finished.</p></div>
+      </div>
+    </section>
+
+    <section class="notice">
+      <strong>Use responsibly.</strong>
+      Only convert media you own or have permission to process. Do not use AethelConverts to bypass copyright restrictions.
+    </section>
+  </main>
+
+  <footer>
+    <div>© 2026 AethelConverts • Owner: Sumit Bahrod</div>
+    <div><a href="/privacy">Privacy</a> · <a href="/terms">Terms</a></div>
+  </footer>
+
+<script>
+let mode = "mp3";
+const fileInput = document.getElementById("file");
+const convertBtn = document.getElementById("convert");
+const selected = document.getElementById("selected");
+const filename = document.getElementById("filename");
+const dropzone = document.getElementById("dropzone");
+const title = document.getElementById("drop-title");
+const errorBox = document.getElementById("error");
+
+function updateUI() {
+  document.querySelectorAll(".mode").forEach(b => b.classList.toggle("active", b.dataset.mode === mode));
+  title.textContent = mode === "mp3" ? "Drop your MP4 here" : "Drop your MP3 here";
+  convertBtn.textContent = mode === "mp3" ? "Convert to MP3" : "Convert to MP4";
+  fileInput.value = "";
+  selected.classList.add("hidden");
+  convertBtn.disabled = true;
+  errorBox.classList.add("hidden");
+}
+document.querySelectorAll(".mode").forEach(b => b.onclick = () => { mode = b.dataset.mode; updateUI(); });
+
+fileInput.onchange = () => {
+  if (!fileInput.files[0]) return;
+  filename.textContent = fileInput.files[0].name;
+  selected.classList.remove("hidden");
+  convertBtn.disabled = false;
+  errorBox.classList.add("hidden");
+};
+
+document.getElementById("clear").onclick = () => updateUI();
+
+["dragenter","dragover"].forEach(e => dropzone.addEventListener(e, ev => {
+  ev.preventDefault(); dropzone.classList.add("drag");
+}));
+["dragleave","drop"].forEach(e => dropzone.addEventListener(e, ev => {
+  ev.preventDefault(); dropzone.classList.remove("drag");
+}));
+dropzone.addEventListener("drop", ev => {
+  if (ev.dataTransfer.files.length) {
+    fileInput.files = ev.dataTransfer.files;
+    fileInput.dispatchEvent(new Event("change"));
+  }
+});
+
+convertBtn.onclick = async () => {
+  const file = fileInput.files[0];
+  if (!file) return;
+  convertBtn.disabled = true;
+  document.getElementById("progress-wrap").classList.remove("hidden");
+  document.getElementById("result").classList.add("hidden");
+  errorBox.classList.add("hidden");
+  document.getElementById("status").textContent = "Uploading and converting…";
+  document.getElementById("bar").style.width = "25%";
+
+  const form = new FormData();
+  form.append("file", file);
+  form.append("mode", mode);
+
+  try {
+    const res = await fetch("/convert", {method:"POST", body:form});
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || "Conversion failed.");
+    document.getElementById("bar").style.width = "100%";
+    document.getElementById("status").textContent = "Done.";
+    const dl = document.getElementById("download");
+    dl.href = data.download;
+    dl.download = data.filename;
+    document.getElementById("result").classList.remove("hidden");
+  } catch (e) {
+    errorBox.textContent = e.message;
+    errorBox.classList.remove("hidden");
+  } finally {
+    convertBtn.disabled = false;
+  }
+};
+</script>
+</body>
+</html>
